@@ -1,3 +1,4 @@
+using Application.DTOs.Weather;
 using Application.Interface;
 using Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -16,12 +17,12 @@ namespace Api.Controllers
             _weatherService = weatherService;
         }
 
-        [HttpGet("current")]
-        public async Task<ActionResult<WeatherData>> GetCurrentWeather()
+        [HttpPost("current")]
+        public async Task<ActionResult<WeatherData>> GetCurrentWeather([FromBody] WeatherRequestDto requestDto)
         {
             try
             {
-                var weatherData = await _weatherService.GetWeatherWithPayloadAsync();
+                var weatherData = await _weatherService.GetWeatherWithPayloadAsync(requestDto);
                 return Ok(weatherData);
             }
             catch (Exception ex)

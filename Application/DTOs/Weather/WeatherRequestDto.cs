@@ -8,15 +8,15 @@ namespace Application.DTOs.Weather
 {
     public class WeatherRequestDto
     {
-        public string Status { get; set; } = string.Empty;
-        public List<WeatherDataDto> Data { get; set; } = new List<WeatherDataDto>();
+        public DateTime FromTime { get; set; }
+        public DateTime UntilTime { get; set; }
+        public DateTime? AsOf { get; set; } = null;
+        public List<CoordinateDto> Coordinates { get; set; } = new();
     }
 
-    public class WeatherDataDto
+    public class CoordinateDto
     {
-        public string Variable { get; set; } = string.Empty;
-        public string Location { get; set; } = string.Empty;
-        public DateTime Timestamp { get; set; }
-        public double Value { get; set; }
+        public string? Name { get; set; }
     }
+
 }

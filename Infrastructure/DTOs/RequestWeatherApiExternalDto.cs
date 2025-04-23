@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Infrastructure.DTOs
 {
-    public class WeatherApiExternalDto
+    public class RequestWeatherApiExternalDto
     {
         public DateTime FromTime { get; set; }
         public DateTime UntilTime { get; set; }
@@ -26,9 +26,9 @@ namespace Infrastructure.DTOs
 
     public class VariableDto
     {
-        public string Name { get; set; } = string.Empty;
-        public string Level { get; set; } = string.Empty;
+        public string Name { get; set; } = "TMP";
+        public string Level { get; set; } = "2 m above ground";
         public string? Info { get; set; }
-        public string? Alias { get; set; }
+        public string? Alias { get; set; } = "temperatura";
     }
 }

@@ -1,8 +1,10 @@
 ﻿using Domain.Entities;
+using Infrastructure.DTOs;
 using Infrastructure.Interface;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace Infrastructure.Service
 {
@@ -14,7 +16,6 @@ namespace Infrastructure.Service
         private readonly IMemoryCache _memoryCache;
 
 
-        // Inyectar IConfiguration en el constructor
         public ExternalWeatherApiService(IConfiguration configuration, HttpClient httpClient, IMemoryCache memoryCache)
         {
             _httpClient = httpClient;
@@ -25,7 +26,7 @@ namespace Infrastructure.Service
         }
 
 
-        public async Task<WeatherData> GetWeatherWithPayloadAsync()
+        public async Task<WeatherData> GetWeatherWithPayloadAsync(RequestWeatherApiExternalDto requestDto)
         {
             var cacheKey = "weather_payload_test";
 
@@ -34,26 +35,17 @@ namespace Infrastructure.Service
                 return cachedWeatherData;
             }
 
-            var payload = new
-            {
-                fromTime = "2025-03-10T05:00:00Z",
-                untilTime = "2025-03-10T10:00:00Z",
-                asOf = "2025-03-09T07:30:00Z",
-                minHorizon = 0,
-                maxHorizon = 48,
-                coordinates = new[] {
-            new { lat = 29.7604, lon = -95.3698, name = "El Salvador" }
-        },
-                variables = new[] {
-            new { name = "TMP", level = "2 m above ground", info = "", alias = "temperatura" }
-        }
-            };
-
             try
             {
-                var url = $"{_apiBaseUrl}hrrr/history"; // Asegurate que esta sea la ruta POST correcta
 
-                var jsonContent = JsonConvert.SerializeObject(payload);
+                var url = $"{_apiBaseUrl}hrrr/history";
+
+                var settings = new JsonSerializerSettings
+                {
+                    ContractResolver = new CamelCasePropertyNamesContractResolver()
+                };
+
+                var jsonContent = JsonConvert.SerializeObject(requestDto, settings);
                 var request = new HttpRequestMessage(HttpMethod.Post, url)
                 {
                     Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")
