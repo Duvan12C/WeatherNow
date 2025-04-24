@@ -5,12 +5,15 @@ using System.Text;
 using System.Threading.Tasks;
 using Application.DTOs.Weather;
 using Domain.Entities;
+using Infrastructure.DTOs;
 
 namespace Application.Interface
 {
     public interface IWeatherService
     {
-        Task<WeatherData> GetWeatherWithPayloadAsync(WeatherRequestDto weatherRequestDto);
+        Task<ResponseWeatherApiExternalDto> GetCurrentWeatherAsync(double lat, double lon);
+        Task<ResponseWeatherForecastDto> GetWeatherForecastAsync(double lat, double lon);
+
 
     }
 }

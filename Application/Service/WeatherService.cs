@@ -21,31 +21,14 @@ namespace Application.Service
             _externalWeatherApi = externalWeatherApi;
         }
 
-        public async Task<WeatherData> GetWeatherWithPayloadAsync(WeatherRequestDto requestDto)
+        public async Task<ResponseWeatherApiExternalDto> GetCurrentWeatherAsync(double lat, double lon)
         {
-            var ca = new RequestWeatherApiExternalDto
-            {
-                FromTime = requestDto.FromTime,
-                UntilTime = requestDto.UntilTime,
-                AsOf = requestDto.AsOf,
-                Coordinates = requestDto.Coordinates.Select(c => new Infrastructure.DTOs.CoordinateDto
-                {
-        
-                    Name = c.Name
-                }).ToList(),
-                Variables = new List<VariableDto>
-        {
-            new VariableDto
-            {
-                Name = "TMP",
-                Level = "2 m above ground",
-                Info = "",
-                Alias = "temperatura"
-            }
+            return await _externalWeatherApi.GetCurrentWeatherAsync(lat, lon);
         }
 
-            };
-            return await _externalWeatherApi.GetWeatherWithPayloadAsync(ca);
+        public async Task<ResponseWeatherForecastDto> GetWeatherForecastAsync(double lat, double lon)
+        {
+            return await _externalWeatherApi.GetWeatherForecastAsync(lat, lon);
         }
     }
 }

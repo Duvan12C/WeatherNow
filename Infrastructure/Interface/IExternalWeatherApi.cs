@@ -10,7 +10,7 @@ namespace Infrastructure.Interface
 {
     public interface IExternalWeatherApi
     {
-        Task<WeatherData> GetWeatherWithPayloadAsync(RequestWeatherApiExternalDto requestWeatherApiExternalDto);
-        Task<WeatherForecast> GetWeatherForecastAsync(string city);
+        Task<ResponseWeatherApiExternalDto> GetCurrentWeatherAsync(double lat, double lon);
+        Task<ResponseWeatherForecastDto> GetWeatherForecastAsync(double lat, double lon);
     }
 }

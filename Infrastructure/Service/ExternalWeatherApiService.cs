@@ -1,4 +1,5 @@
-﻿using Domain.Entities;
+﻿using System.Globalization;
+using Domain.Entities;
 using Infrastructure.DTOs;
 using Infrastructure.Interface;
 using Microsoft.Extensions.Caching.Memory;
@@ -26,94 +27,96 @@ namespace Infrastructure.Service
         }
 
 
-        public async Task<WeatherData> GetWeatherWithPayloadAsync(RequestWeatherApiExternalDto requestDto)
+        public async Task<ResponseWeatherApiExternalDto> GetCurrentWeatherAsync(double lat, double lon)
         {
-            var cacheKey = "weather_payload_test";
+            var cacheKey = $"weather_current_{lat}_{lon}";
+            var latString = lat.ToString(CultureInfo.InvariantCulture);
+            var lonString = lon.ToString(CultureInfo.InvariantCulture);
 
-            if (_memoryCache.TryGetValue(cacheKey, out WeatherData cachedWeatherData))
+            if (_memoryCache.TryGetValue(cacheKey, out ResponseWeatherApiExternalDto cachedWeatherData))
             {
                 return cachedWeatherData;
             }
 
             try
             {
+                var url = $"{_apiBaseUrl}current?lat={latString}&lon={lonString}&key={_apiToken}";
 
-                var url = $"{_apiBaseUrl}hrrr/history";
-
-                var settings = new JsonSerializerSettings
-                {
-                    ContractResolver = new CamelCasePropertyNamesContractResolver()
-                };
-
-                var jsonContent = JsonConvert.SerializeObject(requestDto, settings);
-                var request = new HttpRequestMessage(HttpMethod.Post, url)
-                {
-                    Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")
-                };
-                request.Headers.Add("Authorization", $"Bearer {_apiToken}");
-
-                var response = await _httpClient.SendAsync(request);
+                var response = await _httpClient.GetAsync(url);
 
                 if (response.IsSuccessStatusCode)
                 {
                     var data = await response.Content.ReadAsStringAsync();
-                    var weatherData = JsonConvert.DeserializeObject<WeatherData>(data);
 
-                    if (weatherData == null)
+                    var rawWeather = JsonConvert.DeserializeObject<OpenWeatherMapCurrentResponseDto>(data);
+
+                    var result = new ResponseWeatherApiExternalDto
                     {
-                        throw new Exception("Error al deserializar los datos del clima.");
-                    }
+                        CityName = rawWeather.Data[0].CityName,
+                        Temperature = rawWeather.Data[0].Temp,
+                        WeatherDescription = rawWeather.Data[0].Weather.Description,
+                        Humidity = rawWeather.Data[0].Humidity,
+                        WindSpeed = rawWeather.Data[0].WindSpeed,
+                        WindDirection = rawWeather.Data[0].WindDirection,
+                        Sunrise = rawWeather.Data[0].Sunrise,
+                        Sunset = rawWeather.Data[0].Sunset
+                    };
 
-                    _memoryCache.Set(cacheKey, weatherData, TimeSpan.FromMinutes(10));
+                    _memoryCache.Set(cacheKey, result, TimeSpan.FromMinutes(10));
 
-                    return weatherData;
+                    return result;
                 }
                 else
                 {
-                    throw new Exception($"Error al obtener el clima desde payload. Código de estado: {response.StatusCode}");
+                    throw new Exception($"Error al obtener el clima: {response.StatusCode}");
                 }
             }
             catch (Exception ex)
             {
-                throw new Exception("Error al obtener el clima desde payload", ex);
+                throw new Exception("Error al obtener el clima actual desde OpenWeatherMap", ex);
             }
         }
 
 
-
-        public async Task<WeatherForecast> GetWeatherForecastAsync(string city)
+        public async Task<ResponseWeatherForecastDto> GetWeatherForecastAsync(double lat, double lon)
         {
-            var url = $"{_apiBaseUrl}weather/forecast?city={city}";
+            var cacheKey = $"weather_7day_{lat}_{lon}";
+            if (_memoryCache.TryGetValue(cacheKey, out ResponseWeatherForecastDto cached))
+                return cached;
 
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("Authorization", $"Bearer {_apiToken}");
+            var latStr = lat.ToString(CultureInfo.InvariantCulture);
+            var lonStr = lon.ToString(CultureInfo.InvariantCulture);
+            var url = $"{_apiBaseUrl}forecast/daily?lat={latStr}&lon={lonStr}&key={_apiToken}&days=7";
 
-            var response = await _httpClient.SendAsync(request);
+            var resp = await _httpClient.GetAsync(url);
+            if (!resp.IsSuccessStatusCode)
+                throw new Exception($"Error al obtener pronóstico: {resp.StatusCode}");
 
-            if (response.IsSuccessStatusCode)
+            var json = await resp.Content.ReadAsStringAsync();
+            // 1) Deserializamos al DTO bruto
+            var raw = JsonConvert.DeserializeObject<WeatherbitDailyResponseDto>(json);
+
+            // 2) Mapeamos a nuestro DTO simplificado
+            var list = raw.Data
+                .Select(d => new DailyForecastDto
+                {
+                    Date = DateTime.ParseExact(d.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    MinTemp = d.MinTemp,
+                    MaxTemp = d.MaxTemp,
+                    Description = d.Weather.Description,
+                    Icon = d.Weather.Icon
+                })
+                .ToList();
+
+            var result = new ResponseWeatherForecastDto
             {
-                var data = await response.Content.ReadAsStringAsync();
+                CityName = raw.CityName,
+                Forecasts = list
+            };
 
-                try
-                {
-                    // Intentar deserializar el JSON
-                    var weatherForecast = JsonConvert.DeserializeObject<WeatherForecast>(data);
-
-                    if (weatherForecast == null)
-                    {
-                        throw new Exception("Deserialización de los datos de pronóstico falló. Los datos recibidos son inválidos.");
-                    }
-
-                    return weatherForecast;
-                }
-                catch (JsonException ex)
-                {
-                    // Manejo de errores en caso de que no se pueda deserializar
-                    throw new Exception("Error al deserializar los datos del pronóstico", ex);
-                }
-            }
-
-            throw new Exception("Error al obtener el pronóstico");
+            _memoryCache.Set(cacheKey, result, TimeSpan.FromMinutes(10));
+            return result;
         }
+
     }
 }

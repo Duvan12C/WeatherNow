@@ -1,6 +1,7 @@
 using Application.DTOs.Weather;
 using Application.Interface;
 using Domain.Entities;
+using Infrastructure.DTOs;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
@@ -11,24 +12,39 @@ namespace Api.Controllers
     {
         private readonly IWeatherService _weatherService;
 
-        // Inyectamos IWeatherService (de la capa Application)
         public WeatherController(IWeatherService weatherService)
         {
             _weatherService = weatherService;
         }
 
-        [HttpPost("current")]
-        public async Task<ActionResult<WeatherData>> GetCurrentWeather([FromBody] WeatherRequestDto requestDto)
+        [HttpGet("current")]
+        public async Task<ActionResult<ResponseWeatherApiExternalDto>> GetCurrentWeather([FromQuery] double lat, [FromQuery] double lon)
+
         {
             try
             {
-                var weatherData = await _weatherService.GetWeatherWithPayloadAsync(requestDto);
+                var weatherData = await _weatherService.GetCurrentWeatherAsync(lat, lon);
                 return Ok(weatherData);
             }
             catch (Exception ex)
             {
-                // Aquí manejas el error de forma general
-                return StatusCode(500, ex.Message);
+                return StatusCode(500, new { message = "Ocurrió un error al obtener el clima actual.", details = ex.Message });
+            }
+        }
+
+
+        [HttpGet("forecast")]
+        public async Task<ActionResult<ResponseWeatherForecastDto>> GetWeatherForecastAsync([FromQuery] double lat, [FromQuery] double lon)
+
+        {
+            try
+            {
+                var weatherData = await _weatherService.GetWeatherForecastAsync(lat, lon);
+                return Ok(weatherData);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Ocurrió un error al obtener el clima actual.", details = ex.Message });
             }
         }
     }
