@@ -46,10 +46,22 @@ builder.Services.AddControllers()
     });
 
 
+// Permitir CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhost", policy =>
+    {
+        policy.AllowAnyOrigin()
+                      .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 
 var app = builder.Build();
 
+// Usar la política CORS
+app.UseCors("AllowLocalhost");
 
 // Configuración del pipeline HTTP
 app.UseSerilogRequestLogging(); // Para log de cada petición

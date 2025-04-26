@@ -16,6 +16,8 @@ namespace Infrastructure.DTOs
         public string WindDirection { get; set; }
         public string Sunrise { get; set; }
         public string Sunset { get; set; }
+        public string Icon { get; set; }
+
     }
 
 }

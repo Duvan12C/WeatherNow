@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using Domain.Entities;
+using Infrastructure.Data;
 using Infrastructure.DTOs;
 using Infrastructure.Interface;
 using Microsoft.Extensions.Caching.Memory;
@@ -15,14 +16,20 @@ namespace Infrastructure.Service
         private readonly string _apiBaseUrl;
         private readonly string _apiToken;
         private readonly IMemoryCache _memoryCache;
+        private readonly WeatherDbContext _context; // Inyección
 
 
-        public ExternalWeatherApiService(IConfiguration configuration, HttpClient httpClient, IMemoryCache memoryCache)
+        public ExternalWeatherApiService(
+            IConfiguration configuration, 
+            HttpClient httpClient, 
+            IMemoryCache memoryCache,
+            WeatherDbContext context)
         {
             _httpClient = httpClient;
             _apiBaseUrl = configuration["WeatherApi:BaseUrl"] ?? throw new ArgumentNullException("WeatherApi:BaseUrl");
             _apiToken = configuration["WeatherApi:ApiToken"] ?? throw new ArgumentNullException("WeatherApi:ApiToken");
             _memoryCache = memoryCache;
+            _context = context;
 
         }
 
@@ -30,13 +37,10 @@ namespace Infrastructure.Service
         public async Task<ResponseWeatherApiExternalDto> GetCurrentWeatherAsync(double lat, double lon)
         {
             var cacheKey = $"weather_current_{lat}_{lon}";
+            if (_memoryCache.TryGetValue(cacheKey, out ResponseWeatherApiExternalDto cached))
+                return cached;
             var latString = lat.ToString(CultureInfo.InvariantCulture);
             var lonString = lon.ToString(CultureInfo.InvariantCulture);
-
-            if (_memoryCache.TryGetValue(cacheKey, out ResponseWeatherApiExternalDto cachedWeatherData))
-            {
-                return cachedWeatherData;
-            }
 
             try
             {
@@ -59,8 +63,22 @@ namespace Infrastructure.Service
                         WindSpeed = rawWeather.Data[0].WindSpeed,
                         WindDirection = rawWeather.Data[0].WindDirection,
                         Sunrise = rawWeather.Data[0].Sunrise,
-                        Sunset = rawWeather.Data[0].Sunset
+                        Sunset = rawWeather.Data[0].Sunset,
+                        Icon = rawWeather.Data[0].Weather.Icon
+
                     };
+
+                    var entity = new WeatherLogs
+                    {
+                        CityName = result.CityName,
+                        Temperature = result.Temperature,
+                        Description = result.WeatherDescription,
+                        Icon = result.Icon,
+                        FechaRegistro = DateTime.UtcNow
+                    };
+
+                    _context.WeatherLogs.Add(entity);
+                    await _context.SaveChangesAsync();
 
                     _memoryCache.Set(cacheKey, result, TimeSpan.FromMinutes(10));
 
