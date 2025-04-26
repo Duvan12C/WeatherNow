@@ -28,8 +28,17 @@ builder.Services.AddHttpClient("OpenWeatherClient")
 builder.Services.AddMemoryCache();
 
 
+var currentDirectory = Directory.GetCurrentDirectory();
+var solutionDirectory = Directory.GetParent(currentDirectory).FullName;
+
+var dbPath = Path.Combine(solutionDirectory, "Infrastructure", "Data", "WeatherNowDB.db");
+
+Console.WriteLine($"Ruta de la base de datos: {dbPath}");
+
 builder.Services.AddDbContext<WeatherDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite($"Data Source={dbPath}"));
+
+
 // Add services to the container.
 builder.Services.AddScoped<IExternalWeatherApi, ExternalWeatherApiService>();
 builder.Services.AddScoped<IWeatherService, WeatherService>(); // Asegúrate de que WeatherService implementa IWeatherService

@@ -5,6 +5,7 @@ using Infrastructure.DTOs;
 using Infrastructure.Interface;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
@@ -18,18 +19,21 @@ namespace Infrastructure.Service
         private readonly IMemoryCache _memoryCache;
         private readonly WeatherDbContext _context; // Inyección
 
+        private readonly ILogger<ExternalWeatherApiService> _logger;
 
         public ExternalWeatherApiService(
             IConfiguration configuration, 
             HttpClient httpClient, 
             IMemoryCache memoryCache,
-            WeatherDbContext context)
+            WeatherDbContext context,
+            ILogger<ExternalWeatherApiService> logger)
         {
             _httpClient = httpClient;
             _apiBaseUrl = configuration["WeatherApi:BaseUrl"] ?? throw new ArgumentNullException("WeatherApi:BaseUrl");
             _apiToken = configuration["WeatherApi:ApiToken"] ?? throw new ArgumentNullException("WeatherApi:ApiToken");
             _memoryCache = memoryCache;
             _context = context;
+            _logger = logger;
 
         }
 
@@ -42,6 +46,8 @@ namespace Infrastructure.Service
             var latString = lat.ToString(CultureInfo.InvariantCulture);
             var lonString = lon.ToString(CultureInfo.InvariantCulture);
 
+            _logger.LogInformation("Recibiendo solicitud GET /weather/current?lat={Lat}&lon={Lon}", lat, lon , "Dentro del servicio de la capa de infrastructure");
+
             try
             {
                 var url = $"{_apiBaseUrl}current?lat={latString}&lon={lonString}&key={_apiToken}";
@@ -50,6 +56,8 @@ namespace Infrastructure.Service
 
                 if (response.IsSuccessStatusCode)
                 {
+                    _logger.LogInformation("Datos obtenidos exitosamente para para el clima actual");
+
                     var data = await response.Content.ReadAsStringAsync();
 
                     var rawWeather = JsonConvert.DeserializeObject<OpenWeatherMapCurrentResponseDto>(data);
@@ -80,17 +88,22 @@ namespace Infrastructure.Service
                     _context.WeatherLogs.Add(entity);
                     await _context.SaveChangesAsync();
 
+                    _logger.LogInformation("Registro de clima guardado correctamente en la base de datos para {CityName} a {Temperature}°C", result.CityName, result.Temperature);
+
+
                     _memoryCache.Set(cacheKey, result, TimeSpan.FromMinutes(10));
 
                     return result;
                 }
                 else
                 {
+                    _logger.LogError("Error al obtener clima actual para lat={Lat}, lon={Lon}. Estado de la respuesta: {StatusCode}", lat, lon, response.StatusCode);
                     throw new Exception($"Error al obtener el clima: {response.StatusCode}");
                 }
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Ocurrió un error al obtener el clima actual desde OpenWeatherMap para lat={Lat}, lon={Lon}", lat, lon);
                 throw new Exception("Error al obtener el clima actual desde OpenWeatherMap", ex);
             }
         }
@@ -104,37 +117,53 @@ namespace Infrastructure.Service
 
             var latStr = lat.ToString(CultureInfo.InvariantCulture);
             var lonStr = lon.ToString(CultureInfo.InvariantCulture);
-            var url = $"{_apiBaseUrl}forecast/daily?lat={latStr}&lon={lonStr}&key={_apiToken}&days=7";
 
-            var resp = await _httpClient.GetAsync(url);
-            if (!resp.IsSuccessStatusCode)
-                throw new Exception($"Error al obtener pronóstico: {resp.StatusCode}");
-
-            var json = await resp.Content.ReadAsStringAsync();
-            // 1) Deserializamos al DTO bruto
-            var raw = JsonConvert.DeserializeObject<WeatherbitDailyResponseDto>(json);
-
-            // 2) Mapeamos a nuestro DTO simplificado
-            var list = raw.Data
-                .Select(d => new DailyForecastDto
-                {
-                    Date = DateTime.ParseExact(d.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture),
-                    MinTemp = d.MinTemp,
-                    MaxTemp = d.MaxTemp,
-                    Description = d.Weather.Description,
-                    Icon = d.Weather.Icon
-                })
-                .ToList();
-
-            var result = new ResponseWeatherForecastDto
+            try
             {
-                CityName = raw.CityName,
-                Forecasts = list
-            };
+                _logger.LogInformation("Recibiendo solicitud GET /weather/forecast/daily?lat={Lat}&lon={Lon}&days=7", lat, lon);
 
-            _memoryCache.Set(cacheKey, result, TimeSpan.FromMinutes(10));
-            return result;
+                var url = $"{_apiBaseUrl}forecast/daily?lat={latStr}&lon={lonStr}&key={_apiToken}&days=7";
+                var resp = await _httpClient.GetAsync(url);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Error al obtener pronóstico para {Lat},{Lon}. Estado de la respuesta: {StatusCode}", lat, lon, resp.StatusCode);
+                    throw new Exception($"Error al obtener pronóstico: {resp.StatusCode}");
+                }
+
+                var json = await resp.Content.ReadAsStringAsync();
+                var raw = JsonConvert.DeserializeObject<WeatherbitDailyResponseDto>(json);
+
+                var list = raw.Data
+                    .Select(d => new DailyForecastDto
+                    {
+                        Date = DateTime.ParseExact(d.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture),
+                        MinTemp = d.MinTemp,
+                        MaxTemp = d.MaxTemp,
+                        Description = d.Weather.Description,
+                        Icon = d.Weather.Icon
+                    })
+                    .ToList();
+
+                var result = new ResponseWeatherForecastDto
+                {
+                    CityName = raw.CityName,
+                    Forecasts = list
+                };
+
+                _memoryCache.Set(cacheKey, result, TimeSpan.FromMinutes(10));
+
+                _logger.LogInformation("Pronóstico de 7 días para {Lat},{Lon} guardado en caché.", lat, lon);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ocurrió un error al obtener el pronóstico de clima para {Lat},{Lon}", lat, lon);
+                throw new Exception("Error al obtener el clima pronóstico desde OpenWeatherMap", ex);
+            }
         }
+
 
     }
 }
