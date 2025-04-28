@@ -11,7 +11,7 @@ Este proyecto es una API construida con ASP.NET Core 8, que consulta informació
 - NLog
 - MemoryCache
 - Newtonsoft.Json
-- SQL Server (para persistencia de logs de clima)
+- SQLite (base de datos local incluida en la solución)
 
 # =========================================
 # Arquitectura de la solución
