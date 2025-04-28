@@ -1,8 +1,4 @@
-#!/bin/bash
-
-# =========================================
 # Proyecto API de Clima - ASP.NET Core 8 🌦️
-# =========================================
 
 Este proyecto es una API construida con ASP.NET Core 8, que consulta información del clima utilizando la API externa de Weatherbit.io (https://www.weatherbit.io/).
 
@@ -34,44 +30,40 @@ Importante:
 # =========================================
 # Endpoints Disponibles
 # =========================================
-- GET /weather/current?lat={latitud}&lon={longitud}
-  Devuelve el clima actual para las coordenadas dadas.
+- GET /weather/current
+  Devuelve el clima actual para las coordenadas dadas (latitud y longitud como parámetros).
 
-- GET /weather/forecast?lat={latitud}&lon={longitud}
-  Devuelve el pronóstico de los próximos 7 días.
+- GET /weather/forecast
+  Devuelve el pronóstico del clima para los próximos 7 días (latitud y longitud como parámetros).
 
-Los resultados siempre vienen en un objeto estándar que contiene:
+Formato estándar de respuesta:
 - status: Si la operación fue exitosa.
 - message: Mensaje adicional o de error.
-- data: El cuerpo de la respuesta (puede ser el clima actual o la lista de pronósticos).
+- data: Contenido de la respuesta (clima actual o pronóstico).
 
 # =========================================
 # Cómo correr el proyecto
 # =========================================
-1. Clona el repositorio:
+1. Clonar el repositorio:
 git clone <tu-repo>
 
-2. Configura tu cadena de conexión a la base de datos en appsettings.json.
+2. Configurar la cadena de conexión a la base de datos en appsettings.json.
 
-3. Configura tu API Key de Weatherbit.io también en appsettings.json.
+3. Configurar la API Key de Weatherbit.io también en appsettings.json.
 
-4. Ejecuta las migraciones si es necesario:
-update-database
-
-5. Corre el proyecto:
+4. Levantar el proyecto:
 dotnet run
 
 # =========================================
 # Notas importantes
 # =========================================
 - La información del clima también se guarda automáticamente en base de datos (tabla WeatherLogs).
-- Se usa MemoryCache para no llamar a la API externa si los datos ya están almacenados por 10 minutos.
-- La API ya viene con un sistema básico de logs con NLog (errores y actividad normal).
-- Todos los controladores usan una respuesta base ApiResponse<T>, con Status, Message y Data.
+- Se usa MemoryCache para no llamar a la API externa si los datos ya fueron obtenidos en los últimos 10 minutos.
+- La API incluye sistema de logging usando NLog para errores y actividad normal.
+- Todos los controladores retornan un objeto ApiResponse<T> con los campos Status, Message y Data.
 
 # =========================================
 # Nota de Disculpa 🙏🏻
 # =========================================
 Nunca antes había implementado manejo de archivos de texto o string largos en C#. Intenté hacerlo por el requerimiento solicitado, pero me topé con un error que no pude solucionar completamente.
 Agradezco la oportunidad de intentarlo y mejorar. ¡Gracias por su comprensión!
-
