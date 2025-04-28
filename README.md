@@ -65,5 +65,5 @@ dotnet run
 # =========================================
 # Nota de Disculpa 🙏🏻
 # =========================================
-Nunca antes había implementado manejo de archivos de texto o string largos en C#. Intenté hacerlo por el requerimiento solicitado, pero me topé con un error que no pude solucionar completamente.
-Agradezco la oportunidad de intentarlo y mejorar. ¡Gracias por su comprensión!
+Nunca antes había implementado pruebas automatizadas (testing) en C#. Intenté aplicarlas en el proyecto como fue solicitado, pero me encontré con dificultades que no logré resolver completamente.  
+Agradezco la oportunidad de intentarlo y seguir mejorando en esta área. ¡Gracias por su comprensión!
